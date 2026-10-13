@@ -58,38 +58,64 @@ function randomSynopsis(project) {
   return `${title} เล่าเรื่องของ${leads} ${pick(setups)} ${pick(goals)} ${pick(turns)} โดยแต่ละตอนจะเปิดเผยเบาะแสใหม่และพาเรื่องราวเดินหน้าต่อเนื่อง`;
 }
 
-function buildSceneDraft(project, episodeTitle, sceneNumber, previousScene, firstInEpisode = false) {
+function buildSceneDraft(project, episodeTitle, sceneNumber, previousScene, firstInEpisode = false, history = []) {
   const description = project.description?.trim() || `เรื่อง ${project.title} แนว ${project.genre || "ผจญภัย"}`;
   const cast = (project.characters || []).map(c => c.name).filter(Boolean);
-  const speaker = cast.length ? pick(cast) : "ตัวละครหลัก";
-  const other = cast.filter(n => n !== speaker)[0] || "เพื่อนร่วมทีม";
-  const prior = previousScene?.action?.trim();
-  const location = previousScene?.location?.trim() || pick(["สถานที่หลักของเรื่อง", "บริเวณใกล้จุดเกิดเหตุ", "ทางเดินที่นำไปสู่เป้าหมาย"]);
-  const actions = firstInEpisode
-    ? [
-        `ต่อเนื่องจากตอนก่อนที่ ${prior || "ภารกิจยังไม่สิ้นสุด"} ในตอนนี้ ${speaker} และ ${other} เริ่มต้นภารกิจช่วงใหม่ตามเรื่องย่อ: ${description} พวกเขาสังเกตสิ่งรอบตัวและพบเบาะแสที่จะพาไปสู่เหตุการณ์ถัดไป`,
-        `เปิดตอนด้วยภาพ ${speaker} ทบทวนเหตุการณ์จากตอนก่อน (${prior || "การเดินทางที่ยังค้างอยู่"}) ก่อนชวน ${other} เดินหน้าตามเป้าหมายของเรื่อง ${description} ทั้งคู่พบรายละเอียดสำคัญที่ยังไม่มีใครสังเกต`,
-        `หลังเหตุการณ์ในตอนก่อน ${speaker} และ ${other} มาถึงจุดต่อไปของภารกิจ พวกเขาพูดคุยถึงเป้าหมายตามเรื่อง ${description} แล้วพบอุปสรรคแรกของตอนนี้`
-      ]
-    : [
-        `ต่อจากฉากก่อนที่ ${prior || "ตัวละครกำลังดำเนินภารกิจ"} ${speaker} สังเกตเห็นสิ่งผิดปกติและเรียก ${other} มาช่วยตรวจสอบ ทำให้เรื่อง ${project.title} เดินหน้าไปอีกขั้น`,
-        `เหตุการณ์ต่อเนื่องจากฉากก่อน (${prior || "การสำรวจสถานที่"}) ${other} เสนอวิธีใหม่ ขณะที่ ${speaker} ทดลองทำตามและพบเบาะแสที่เชื่อมกับเรื่องย่อ: ${description}`,
-        `ทันทีหลังฉากก่อน ${speaker} ตัดสินใจลงมือทำตามแผน แต่เกิดเหตุไม่คาดคิดที่ทำให้ ${other} ต้องช่วยแก้สถานการณ์ ทั้งคู่ยังคงมุ่งสู่เป้าหมายของเรื่อง ${project.title}`
-      ];
-  const dialogue = pick([
-    `${speaker}: เราต้องเดินหน้าต่อ เป้าหมายของเรายังอยู่ข้างหน้า\n${other}: ตกลง แต่คราวนี้เราต้องสังเกตให้รอบคอบกว่าเดิม`,
-    `${speaker}: เห็นนั่นไหม? ฉันคิดว่านี่อาจเป็นเบาะแสสำคัญ\n${other}: งั้นเราไปตรวจดูด้วยกัน อย่าเพิ่งรีบด่วนสรุป`,
-    `${speaker}: แผนเปลี่ยนแล้ว เราต้องหาทางใหม่\n${other}: ฉันไปด้วยกัน เราจะหาคำตอบให้ได้`
-  ]);
+  const allHistory = Array.isArray(history) ? history : [];
+  const globalStep = allHistory.length + 1;
+  const speaker = cast.length ? cast[(globalStep - 1) % cast.length] : "ตัวละครหลัก";
+  const other = cast.length > 1 ? cast[globalStep % cast.length] : "เพื่อนร่วมทีม";
+  const priorAction = previousScene?.action?.trim() || "ภารกิจเพิ่งเริ่มต้นและตัวละครกำลังหาทางไปสู่เป้าหมาย";
+  const priorLocation = previousScene?.location?.trim() || "สถานที่หลักของเรื่อง";
+  const priorDialogue = previousScene?.dialogue?.trim() || "";
+  const lastLine = priorDialogue.split("\n").filter(Boolean).slice(-1)[0] || "";
+  const genre = (project.genre || "ผจญภัย").toLowerCase();
+  const isComedy = genre.includes("ตลก") || genre.includes("คอมเมดี้");
+  const beats = [
+    { title: "ผลจากการตัดสินใจ", action: `ต่อเนื่องทันทีจากเหตุการณ์ก่อนหน้า (${priorAction}) ${speaker} ลงมือรับมือกับผลที่เกิดขึ้นจริง ขณะที่ ${other} ช่วยตรวจสอบว่าการตัดสินใจนั้นพาพวกเขาเข้าใกล้เป้าหมายของเรื่อง “${project.title}” หรือไม่`, dialogue: `${speaker}: เราต้องดูให้ชัดว่าการตัดสินใจเมื่อกี้ทำให้เกิดอะไรขึ้น\n${other}: ฉันจะตรวจสอบตรงนี้ แล้วเราค่อยตัดสินใจขั้นต่อไป` },
+    { title: "เบาะแสชิ้นถัดไป", action: `จากสิ่งที่เพิ่งเกิดขึ้นในฉากก่อน (${priorAction}) ${other} สังเกตเห็นรายละเอียดเล็ก ๆ ในบริเวณ ${priorLocation} ซึ่งเชื่อมกับเป้าหมายในเรื่องย่อ “${description}” ${speaker} จึงเข้าไปตรวจสอบ แต่ยังไม่รีบสรุปคำตอบ`, dialogue: `${other}: เดี๋ยวก่อน ตรงนี้มีบางอย่างที่เราไม่ทันสังเกต\n${speaker}: ถ้ามันเกี่ยวกับเรื่องที่เกิดขึ้น เราต้องเก็บรายละเอียดไว้ก่อน` },
+    { title: "อุปสรรคขวางทาง", action: `ขณะที่ ${speaker} และ ${other} กำลังตามเบาะแสจากฉากก่อน สถานการณ์กลับมีอุปสรรคใหม่เข้ามาขัดจังหวะ ทั้งคู่ต้องหยุดแผนเดิมและหาทางผ่านปัญหาโดยไม่ทิ้งเป้าหมายหลักของเรื่อง “${project.title}”`, dialogue: `${speaker}: ทางเดิมใช้ไม่ได้แล้ว เราต้องเปลี่ยนแผน\n${other}: งั้นลองใช้สิ่งที่เราเพิ่งรู้มาแก้ปัญหานี้` },
+    { title: "ทางเลือกสำคัญ", action: `หลังพบอุปสรรค ${speaker} เสนอทางเลือกสองทางที่มีผลต่อภารกิจ ${other} ทบทวนข้อมูลจากฉากก่อน แล้วทั้งคู่เลือกวิธีที่สมเหตุสมผลที่สุด การตัดสินใจนี้ทำให้เรื่องเดินหน้าและมีผลต่อเหตุการณ์ถัดไป`, dialogue: `${speaker}: เรามีสองทางเลือก แต่เลือกพลาดไม่ได้\n${other}: ใช้เบาะแสที่เรามีตัดสินใจ แล้วรับผลไปด้วยกัน` },
+    { title: "แผนเริ่มได้ผล", action: `ทั้งคู่ลงมือทำตามแผนที่เลือกไว้ในฉากก่อน ขั้นตอนแรกสำเร็จและทำให้พวกเขาเข้าใกล้เป้าหมายขึ้นหนึ่งขั้น แต่ผลสำเร็จนี้เผยให้เห็นข้อจำกัดหรือความเสี่ยงใหม่ที่ต้องรับมือในฉากถัดไป`, dialogue: `${other}: สำเร็จไปหนึ่งขั้นแล้ว!\n${speaker}: ใช่ แต่ยังอย่าเพิ่งฉลอง เราต้องดูด้วยว่ามีอะไรตามมา` },
+    { title: "ความจริงที่ยังไม่ครบ", action: `ข้อมูลใหม่ทำให้ ${speaker} เริ่มเข้าใจเหตุการณ์ก่อนหน้าในมุมที่ต่างออกไป ${other} เปรียบเทียบเบาะแสเก่ากับสิ่งที่เพิ่งพบ และทั้งคู่รู้ว่าคำตอบที่ได้ยังไม่สมบูรณ์ จึงต้องตามหาหลักฐานอีกชิ้น`, dialogue: `${speaker}: ถ้าเป็นอย่างนี้ สิ่งที่เราเข้าใจตอนแรกอาจไม่ทั้งหมด\n${other}: เรายังขาดอีกชิ้นหนึ่ง ต้องหาหลักฐานมายืนยัน` },
+    { title: "ผลกระทบที่คาดไม่ถึง", action: `การกระทำในฉากก่อนส่งผลกลับมาอย่างชัดเจน ทำให้แผนของ ${speaker} และ ${other} เปลี่ยนไป พวกเขาต้องแก้สถานการณ์เฉพาะหน้า พร้อมรักษาสิ่งที่ทำสำเร็จมาแล้วไม่ให้สูญเปล่า`, dialogue: `${other}: เรื่องเริ่มซับซ้อนกว่าที่คิดแล้วนะ\n${speaker}: งั้นเราต้องแก้ปัญหาตรงหน้า โดยไม่ลืมเป้าหมายเดิม` },
+    { title: "เบาะแสชวนติดตาม", action: `เมื่อสถานการณ์เริ่มคลี่คลาย ${speaker} พบสัญญาณใหม่ที่เชื่อมโยงกับเป้าหมายหลักของเรื่อง “${description}” เบาะแสนี้ชี้ไปยังขั้นต่อไป แต่รายละเอียดสำคัญยังถูกซ่อนไว้ ทำให้ทั้งคู่ต้องเดินหน้าต่อ`, dialogue: `${speaker}: ฉันเจอร่องรอยที่อาจพาเราไปต่อได้\n${other}: งั้นจำรายละเอียดนี้ไว้ ฉากต่อไปเราต้องหาคำตอบให้ได้` }
+  ];
+  // Use a story beat sequence rather than independently randomizing every scene.
+  const beatIndex = (globalStep - 1) % beats.length;
+  let beat = beats[beatIndex];
+  const usedBeatNames = new Set(allHistory.map(x => (x.title || "").split(" — ").pop()));
+  let selectedBeatIndex = beatIndex;
+  for (let offset = 0; offset < beats.length; offset += 1) {
+    const candidateIndex = (beatIndex + offset) % beats.length;
+    if (!usedBeatNames.has(beats[candidateIndex].title)) {
+      selectedBeatIndex = candidateIndex;
+      break;
+    }
+  }
+  beat = beats[selectedBeatIndex];
+  const isNewEpisode = firstInEpisode && previousScene;
+  const transition = isNewEpisode
+    ? `เปิดตอนใหม่โดยรับช่วงจากตอนก่อนโดยตรง: ${priorAction} ${lastLine ? `คำพูดสุดท้ายก่อนหน้านี้คือ “${lastLine}”` : ""} ฉากนี้ต้องแสดงผลต่อเนื่องจากเหตุการณ์นั้น ไม่ย้อนกลับไปเริ่มภารกิจเดิม`
+    : firstInEpisode
+      ? `เปิดเรื่องจากเป้าหมายหลัก: ${description}`
+      : `ดำเนินต่อจากฉากก่อนหน้า: ${priorAction}`;
+  const action = `${transition} ${beat.action}`;
+  const dialogue = isComedy && beatIndex === 2
+    ? `${beat.dialogue}\n${speaker}: ถ้าแผนนี้พังอีก อย่างน้อยขอให้พังอย่างมีแผนหน่อย!`
+    : beat.dialogue;
   return {
-    id: uid(), title: `ฉากที่ ${sceneNumber}${firstInEpisode ? " — จุดเริ่มต้นภารกิจ" : " — เรื่องเดินหน้าต่อ"}`,
-    duration: 8, location,
-    action: pick(actions), dialogue,
-    camera: pick(["เริ่มภาพกว้างเพื่อเห็นตำแหน่งตัวละคร แล้วค่อย ๆ ดอลลี่เข้าใบหน้า", "สลับภาพกลางของตัวละครกับภาพใกล้เบาะแส จบด้วยมุมที่ชวนติดตาม", "กล้องเคลื่อนตามตัวละครอย่างนุ่มนวล แล้วตัดภาพใกล้ปฏิกิริยา"]),
-    sfx: pick(["เสียงบรรยากาศของสถานที่ เสียงฝีเท้า และเสียงเน้นเบา ๆ ตอนพบเบาะแส", "เสียงสภาพแวดล้อมต่อเนื่องจากฉากก่อน พร้อมเสียงประกอบตอนตัวละครตอบสนอง", "เสียงบรรยากาศสมจริง เสียงขยับตัว และเสียงดนตรีลุ้นเบา ๆ ตอนท้าย"]), prompt: ""
+    id: uid(),
+    title: `ฉากที่ ${sceneNumber} — ${beat.title}${usedBeatNames.has(beat.title) ? ` (ต่อยอดขั้นที่ ${globalStep})` : ""}`,
+    duration: 8,
+    location: priorLocation,
+    action,
+    dialogue,
+    camera: `เริ่มจากตำแหน่งและทิศทางเดียวกับฉากก่อน (${priorLocation}) ใช้ภาพกลางเพื่อแสดงปฏิกิริยาต่อเหตุการณ์ แล้วตัดภาพใกล้รายละเอียดใหม่ จบด้วยภาพที่ส่งต่อไปยังฉากถัดไป`,
+    sfx: `คงเสียงบรรยากาศจากฉากก่อนให้ต่อเนื่อง เพิ่มเสียงตามการกระทำจริง และเน้นเสียงสั้น ๆ เฉพาะจังหวะพบข้อมูลใหม่`,
+    prompt: ""
   };
 }
-const readLocal = () => { try { const v = JSON.parse(localStorage.getItem(STORE)); return Array.isArray(v) && v.length ? v : clone(seed); } catch { return clone(seed); } };
 
 function makePrompt(project, episode, scene) {
   const chars = (project.characters || []).map(c =>
@@ -173,12 +199,18 @@ export default function App() {
       p.episodes = p.episodes || [];
       if (!p.description?.trim()) p.description = randomSynopsis(p);
       const previousEpisode = p.episodes[p.episodes.length - 1];
-      const previousScene = previousEpisode?.scenes?.[previousEpisode.scenes.length - 1];
-      const number = p.episodes.length + 1;
-      const e = { id: uid(), title: `ตอนที่ ${number}`, scenes: [buildSceneDraft(p, `ตอนที่ ${number}`, 1, previousScene, true)] };
+      const history = p.episodes.flatMap(e => e.scenes || []);
+      const previousScene = previousEpisode?.scenes?.[previousEpisode.scenes.length - 1] || history[history.length - 1];
+      const number = p.episodes.reduce((max, e) => {
+        const match = String(e.title || "").match(/ตอนที่\s*(\d+)/);
+        return Math.max(max, match ? Number(match[1]) : 0);
+      }, 0) + 1;
+      const beatNames = ["ผลจากเหตุการณ์ก่อนหน้า", "ตามรอยเบาะแส", "อุปสรรคใหม่", "การตัดสินใจ", "แผนเดินหน้า", "ความจริงอีกด้าน", "ผลที่คาดไม่ถึง", "เบาะแสสู่ตอนต่อไป"];
+      const episodeTitle = `ตอนที่ ${number}: ${beatNames[(history.length + p.episodes.length) % beatNames.length]}`;
+      const e = { id: uid(), title: episodeTitle, scenes: [buildSceneDraft(p, episodeTitle, 1, previousScene, true, history)] };
       createdEpisodeId = e.id; createdSceneId = e.scenes[0].id; p.episodes.push(e); return p;
     });
-    setActiveEpisodeId(createdEpisodeId); setActiveSceneId(createdSceneId); setNotice("เพิ่มตอนพร้อมสร้างฉากแรกให้แล้ว");
+    setActiveEpisodeId(createdEpisodeId); setActiveSceneId(createdSceneId); setNotice("เพิ่มตอนใหม่โดยต่อจากเหตุการณ์ล่าสุดแล้ว");
   };
   const addScene = () => {
     let createdSceneId = null;
@@ -186,13 +218,15 @@ export default function App() {
       const ep = p.episodes.find(e => e.id === episode?.id);
       if (ep) {
         ep.scenes = ep.scenes || [];
-        const previousScene = ep.scenes[ep.scenes.length - 1];
-        const s = buildSceneDraft(p, ep.title, ep.scenes.length + 1, previousScene, ep.scenes.length === 0);
+        const previousScene = ep.scenes[ep.scenes.length - 1] || null;
+        const history = p.episodes.flatMap(e => e.scenes || []);
+        const sceneNumber = ep.scenes.length + 1;
+        const s = buildSceneDraft(p, ep.title, sceneNumber, previousScene, ep.scenes.length === 0, history);
         createdSceneId = s.id; ep.scenes.push(s);
       }
       return p;
     });
-    if (createdSceneId) { setActiveSceneId(createdSceneId); setNotice("เพิ่มฉากต่อเนื่องจากฉากก่อนหน้าแล้ว"); }
+    if (createdSceneId) { setActiveSceneId(createdSceneId); setNotice("เพิ่มฉากใหม่โดยต่อจากเหตุการณ์ล่าสุดและตรวจประวัติเรื่องแล้ว"); }
   };
   const deleteEpisode = (episodeId) => {
     const target = active?.episodes?.find(e => e.id === episodeId);
