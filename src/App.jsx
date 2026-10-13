@@ -37,6 +37,58 @@ const seed = [{
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const clone = (x) => JSON.parse(JSON.stringify(x));
+const pick = (items) => items[Math.floor(Math.random() * items.length)];
+
+function randomSynopsis(project) {
+  const title = project.title || "การผจญภัยครั้งใหม่";
+  const genre = (project.genre || "ผจญภัย").toLowerCase();
+  const cast = (project.characters || []).map(c => c.name).filter(Boolean);
+  const leads = cast.length ? cast.slice(0, 3).join(" ตัวละคร ") : "กลุ่มตัวละครหลัก";
+  const setups = genre.includes("สยอง") || genre.includes("ระทึก")
+    ? ["เมื่อพบเสียงประหลาดจากสถานที่ต้องห้าม", "หลังได้รับข้อความปริศนาในคืนฝนตก", "เมื่อเหตุการณ์ที่อธิบายไม่ได้เริ่มเกิดขึ้น"]
+    : genre.includes("คอม") || genre.includes("ตลก")
+    ? ["เมื่อแผนง่าย ๆ กลับผิดพลาดไม่เป็นท่า", "หลังเกิดความเข้าใจผิดครั้งใหญ่", "เมื่อทุกคนต้องร่วมมือกันแก้ปัญหาสุดป่วน"]
+    : genre.includes("แฟนตาซี")
+    ? ["เมื่อค้นพบวัตถุลึกลับที่มีพลังพิเศษ", "หลังประตูสู่โลกอีกใบเปิดออก", "เมื่อคำทำนายเก่ากลับกลายเป็นเรื่องจริง"]
+    : genre.includes("โรแมน") || genre.includes("ดราม่า")
+    ? ["เมื่อความลับในอดีตถูกเปิดเผย", "หลังการพบกันโดยไม่คาดคิด", "เมื่อการตัดสินใจครั้งสำคัญเปลี่ยนความสัมพันธ์ของทุกคน"]
+    : ["เมื่อแผนการสำคัญเริ่มต้นขึ้น", "หลังพบเบาะแสที่ไม่มีใครคาดคิด", "เมื่อเหตุการณ์ไม่คาดฝันทำให้ทุกคนต้องร่วมมือกัน"];
+  const goals = ["พวกเขาต้องตามหาเบาะแสและฝ่าด่านทดสอบทีละขั้น", "ทุกการตัดสินใจนำไปสู่ความท้าทายใหม่และความจริงที่ซ่อนอยู่", "พวกเขาต้องใช้ไหวพริบ ความกล้า และความไว้ใจกันเพื่อไปให้ถึงเป้าหมาย"];
+  const turns = ["แต่ยิ่งเข้าใกล้คำตอบ ก็ยิ่งพบว่ามีบางอย่างไม่เป็นอย่างที่คิด", "ทว่ามีอุปสรรคหนึ่งที่ทำให้แผนทั้งหมดเปลี่ยนไป", "และก่อนจะสำเร็จ พวกเขาต้องเผชิญบททดสอบที่คาดไม่ถึง"];
+  return `${title} เล่าเรื่องของ${leads} ${pick(setups)} ${pick(goals)} ${pick(turns)} โดยแต่ละตอนจะเปิดเผยเบาะแสใหม่และพาเรื่องราวเดินหน้าต่อเนื่อง`;
+}
+
+function buildSceneDraft(project, episodeTitle, sceneNumber, previousScene, firstInEpisode = false) {
+  const description = project.description?.trim() || `เรื่อง ${project.title} แนว ${project.genre || "ผจญภัย"}`;
+  const cast = (project.characters || []).map(c => c.name).filter(Boolean);
+  const speaker = cast.length ? pick(cast) : "ตัวละครหลัก";
+  const other = cast.filter(n => n !== speaker)[0] || "เพื่อนร่วมทีม";
+  const prior = previousScene?.action?.trim();
+  const location = previousScene?.location?.trim() || pick(["สถานที่หลักของเรื่อง", "บริเวณใกล้จุดเกิดเหตุ", "ทางเดินที่นำไปสู่เป้าหมาย"]);
+  const actions = firstInEpisode
+    ? [
+        `ต่อเนื่องจากตอนก่อนที่ ${prior || "ภารกิจยังไม่สิ้นสุด"} ในตอนนี้ ${speaker} และ ${other} เริ่มต้นภารกิจช่วงใหม่ตามเรื่องย่อ: ${description} พวกเขาสังเกตสิ่งรอบตัวและพบเบาะแสที่จะพาไปสู่เหตุการณ์ถัดไป`,
+        `เปิดตอนด้วยภาพ ${speaker} ทบทวนเหตุการณ์จากตอนก่อน (${prior || "การเดินทางที่ยังค้างอยู่"}) ก่อนชวน ${other} เดินหน้าตามเป้าหมายของเรื่อง ${description} ทั้งคู่พบรายละเอียดสำคัญที่ยังไม่มีใครสังเกต`,
+        `หลังเหตุการณ์ในตอนก่อน ${speaker} และ ${other} มาถึงจุดต่อไปของภารกิจ พวกเขาพูดคุยถึงเป้าหมายตามเรื่อง ${description} แล้วพบอุปสรรคแรกของตอนนี้`
+      ]
+    : [
+        `ต่อจากฉากก่อนที่ ${prior || "ตัวละครกำลังดำเนินภารกิจ"} ${speaker} สังเกตเห็นสิ่งผิดปกติและเรียก ${other} มาช่วยตรวจสอบ ทำให้เรื่อง ${project.title} เดินหน้าไปอีกขั้น`,
+        `เหตุการณ์ต่อเนื่องจากฉากก่อน (${prior || "การสำรวจสถานที่"}) ${other} เสนอวิธีใหม่ ขณะที่ ${speaker} ทดลองทำตามและพบเบาะแสที่เชื่อมกับเรื่องย่อ: ${description}`,
+        `ทันทีหลังฉากก่อน ${speaker} ตัดสินใจลงมือทำตามแผน แต่เกิดเหตุไม่คาดคิดที่ทำให้ ${other} ต้องช่วยแก้สถานการณ์ ทั้งคู่ยังคงมุ่งสู่เป้าหมายของเรื่อง ${project.title}`
+      ];
+  const dialogue = pick([
+    `${speaker}: เราต้องเดินหน้าต่อ เป้าหมายของเรายังอยู่ข้างหน้า\n${other}: ตกลง แต่คราวนี้เราต้องสังเกตให้รอบคอบกว่าเดิม`,
+    `${speaker}: เห็นนั่นไหม? ฉันคิดว่านี่อาจเป็นเบาะแสสำคัญ\n${other}: งั้นเราไปตรวจดูด้วยกัน อย่าเพิ่งรีบด่วนสรุป`,
+    `${speaker}: แผนเปลี่ยนแล้ว เราต้องหาทางใหม่\n${other}: ฉันไปด้วยกัน เราจะหาคำตอบให้ได้`
+  ]);
+  return {
+    id: uid(), title: `ฉากที่ ${sceneNumber}${firstInEpisode ? " — จุดเริ่มต้นภารกิจ" : " — เรื่องเดินหน้าต่อ"}`,
+    duration: 8, location,
+    action: pick(actions), dialogue,
+    camera: pick(["เริ่มภาพกว้างเพื่อเห็นตำแหน่งตัวละคร แล้วค่อย ๆ ดอลลี่เข้าใบหน้า", "สลับภาพกลางของตัวละครกับภาพใกล้เบาะแส จบด้วยมุมที่ชวนติดตาม", "กล้องเคลื่อนตามตัวละครอย่างนุ่มนวล แล้วตัดภาพใกล้ปฏิกิริยา"]),
+    sfx: pick(["เสียงบรรยากาศของสถานที่ เสียงฝีเท้า และเสียงเน้นเบา ๆ ตอนพบเบาะแส", "เสียงสภาพแวดล้อมต่อเนื่องจากฉากก่อน พร้อมเสียงประกอบตอนตัวละครตอบสนอง", "เสียงบรรยากาศสมจริง เสียงขยับตัว และเสียงดนตรีลุ้นเบา ๆ ตอนท้าย"]), prompt: ""
+  };
+}
 const readLocal = () => { try { const v = JSON.parse(localStorage.getItem(STORE)); return Array.isArray(v) && v.length ? v : clone(seed); } catch { return clone(seed); } };
 
 function makePrompt(project, episode, scene) {
@@ -114,8 +166,48 @@ export default function App() {
     setProjects(old => [p, ...old]); setActiveId(p.id); setActiveEpisodeId(p.episodes[0].id); setActiveSceneId(p.episodes[0].scenes[0].id);
     setNewTitle(""); setNewIdea(""); setShowNew(false); setPage("editor"); setNotice("สร้างโปรเจกต์แล้ว");
   };
-  const addEpisode = () => updateProject(p => { const e = { id: uid(), title: `ตอนที่ ${(p.episodes?.length || 0)+1}`, scenes: [{ id: uid(), title: "ฉากที่ 1", duration: 8, location: "", action: "", dialogue: "", camera: "", sfx: "", prompt: "" }] }; p.episodes.push(e); setActiveEpisodeId(e.id); setActiveSceneId(e.scenes[0].id); return p; });
-  const addScene = () => updateProject(p => { const ep = p.episodes.find(e => e.id === episode?.id); if (ep) { const s = { id: uid(), title: `ฉากที่ ${ep.scenes.length+1}`, duration: 8, location: "", action: "", dialogue: "", camera: "", sfx: "", prompt: "" }; ep.scenes.push(s); setActiveSceneId(s.id); } return p; });
+  const randomizeSynopsis = () => { if (!active) return; updateProject(p => ({ ...p, description: randomSynopsis(p) })); setNotice("สุ่มเรื่องย่อใหม่แล้ว"); };
+  const addEpisode = () => {
+    let createdEpisodeId = null, createdSceneId = null;
+    updateProject(p => {
+      p.episodes = p.episodes || [];
+      if (!p.description?.trim()) p.description = randomSynopsis(p);
+      const previousEpisode = p.episodes[p.episodes.length - 1];
+      const previousScene = previousEpisode?.scenes?.[previousEpisode.scenes.length - 1];
+      const number = p.episodes.length + 1;
+      const e = { id: uid(), title: `ตอนที่ ${number}`, scenes: [buildSceneDraft(p, `ตอนที่ ${number}`, 1, previousScene, true)] };
+      createdEpisodeId = e.id; createdSceneId = e.scenes[0].id; p.episodes.push(e); return p;
+    });
+    setActiveEpisodeId(createdEpisodeId); setActiveSceneId(createdSceneId); setNotice("เพิ่มตอนพร้อมสร้างฉากแรกให้แล้ว");
+  };
+  const addScene = () => {
+    let createdSceneId = null;
+    updateProject(p => {
+      const ep = p.episodes.find(e => e.id === episode?.id);
+      if (ep) {
+        ep.scenes = ep.scenes || [];
+        const previousScene = ep.scenes[ep.scenes.length - 1];
+        const s = buildSceneDraft(p, ep.title, ep.scenes.length + 1, previousScene, ep.scenes.length === 0);
+        createdSceneId = s.id; ep.scenes.push(s);
+      }
+      return p;
+    });
+    if (createdSceneId) { setActiveSceneId(createdSceneId); setNotice("เพิ่มฉากต่อเนื่องจากฉากก่อนหน้าแล้ว"); }
+  };
+  const deleteEpisode = (episodeId) => {
+    const target = active?.episodes?.find(e => e.id === episodeId);
+    if (!target || !confirm(`ต้องการลบ “${target.title}” และฉากทั้งหมดในตอนนี้หรือไม่?`)) return;
+    const remaining = (active.episodes || []).filter(e => e.id !== episodeId);
+    updateProject(p => ({ ...p, episodes: p.episodes.filter(e => e.id !== episodeId) }));
+    const next = remaining[0]; setActiveEpisodeId(next?.id || null); setActiveSceneId(next?.scenes?.[0]?.id || null); setNotice("ลบตอนแล้ว");
+  };
+  const deleteScene = (sceneId) => {
+    const target = episode?.scenes?.find(s => s.id === sceneId);
+    if (!target || !confirm(`ต้องการลบ “${target.title}” หรือไม่?`)) return;
+    const remaining = (episode.scenes || []).filter(s => s.id !== sceneId);
+    updateProject(p => ({ ...p, episodes: p.episodes.map(e => e.id === episode.id ? { ...e, scenes: e.scenes.filter(s => s.id !== sceneId) } : e) }));
+    const next = remaining[0]; setActiveSceneId(next?.id || null); setNotice("ลบฉากแล้ว");
+  };
   const addCharacter = () => updateProject(p => { const c = { id: uid(), name: `ตัวละคร ${p.characters.length+1}`, role: "ตัวละครหลัก", look: "", outfit: "", voice: "เสียงพูดภาษาไทย", notes: "คงหน้าตา ขนาดตัว และรายละเอียดเหมือนเดิมทุกฉาก" }; p.characters.push(c); return p; });
   const removeProject = (id) => { if (!confirm("ลบโปรเจกต์นี้ออกจากรายการในอุปกรณ์นี้?")) return; const next = projects.filter(p => p.id !== id); setProjects(next.length ? next : []); if (activeId === id) { setActiveId(next[0]?.id); setPage("dashboard"); } };
   const copyText = async (text) => { try { await navigator.clipboard.writeText(text); setNotice("คัดลอกแล้ว"); } catch { setNotice("คัดลอกไม่สำเร็จ กรุณาเลือกข้อความแล้วคัดลอก"); } };
@@ -158,10 +250,10 @@ export default function App() {
         {page === "editor" && <section>
           <div className="page-heading"><div><div className="eyebrow">SCRIPT WORKSPACE</div><h1>เขียนบท <span className="gradient-dot">.</span></h1><p className="muted">จัดการเรื่องย่อ ตอน และบทสนทนาในที่เดียว</p></div><button className="secondary-btn" onClick={exportProject}><Download size={16}/> ส่งออก JSON</button></div>
           {!active ? <Empty title="ยังไม่มีโปรเจกต์" text="สร้างโปรเจกต์แรกเพื่อเริ่มเขียนบท" action={()=>setShowNew(true)}/> : <div className="editor-layout"><div className="editor-main panel"><div className="panel-title"><div className="title-icon"><FileText size={18}/></div><div><h3>ข้อมูลเรื่อง</h3><p>แก้ไขได้ตลอดเวลา</p></div><span className="autosave-label"><Check size={13}/> Auto-save</span></div>
-            <div className="form-grid"><Field label="ชื่อเรื่อง" value={active.title} onChange={v=>updateProject(p=>({...p,title:v}))}/><SelectField label="ประเภทผลงาน" value={active.type} onChange={v=>updateProject(p=>({...p,type:v}))} options={["ภาพยนตร์","ซีรีส์","ซีรีส์การ์ตูน","แอนิเมชัน","หนังสั้น","โฆษณา"]}/><Field label="แนวเรื่อง" value={active.genre} onChange={v=>updateProject(p=>({...p,genre:v}))}/><SelectField label="อัตราส่วนภาพ" value={active.format} onChange={v=>updateProject(p=>({...p,format:v}))} options={["9:16","16:9","1:1","4:5"]}/><div className="full"><Field label="เรื่องย่อ / ไอเดียหลัก" value={active.description} onChange={v=>updateProject(p=>({...p,description:v}))} multiline placeholder="เล่าไอเดียหลัก ตัวละคร และเป้าหมายของเรื่อง..."/></div><Field label="สไตล์ภาพ" value={active.style} onChange={v=>updateProject(p=>({...p,style:v}))}/><SelectField label="ภาษาบทและเสียง" value={active.language} onChange={v=>updateProject(p=>({...p,language:v}))} options={["ภาษาไทย","ไทยเป็นหลัก + ภาษาอื่น","English","หลายภาษา"]}/></div>
+            <div className="form-grid"><Field label="ชื่อเรื่อง" value={active.title} onChange={v=>updateProject(p=>({...p,title:v}))}/><SelectField label="ประเภทผลงาน" value={active.type} onChange={v=>updateProject(p=>({...p,type:v}))} options={["ภาพยนตร์","ซีรีส์","ซีรีส์การ์ตูน","แอนิเมชัน","หนังสั้น","โฆษณา"]}/><Field label="แนวเรื่อง" value={active.genre} onChange={v=>updateProject(p=>({...p,genre:v}))}/><SelectField label="อัตราส่วนภาพ" value={active.format} onChange={v=>updateProject(p=>({...p,format:v}))} options={["9:16","16:9","1:1","4:5"]}/><div className="full synopsis-field"><Field label="เรื่องย่อ / ไอเดียหลัก" value={active.description} onChange={v=>updateProject(p=>({...p,description:v}))} multiline placeholder="เล่าไอเดียหลัก ตัวละคร และเป้าหมายของเรื่อง..."/><button className="secondary-btn synopsis-random" onClick={randomizeSynopsis}><WandSparkles size={15}/> สุ่มเรื่องย่อ</button></div><Field label="สไตล์ภาพ" value={active.style} onChange={v=>updateProject(p=>({...p,style:v}))}/><SelectField label="ภาษาบทและเสียง" value={active.language} onChange={v=>updateProject(p=>({...p,language:v}))} options={["ภาษาไทย","ไทยเป็นหลัก + ภาษาอื่น","English","หลายภาษา"]}/></div>
             <div className="episode-header"><div><h3>ตอนและฉาก</h3><p>เลือกตอนหรือเพิ่มตอนใหม่</p></div><button className="small-primary" onClick={addEpisode}><Plus size={15}/> เพิ่มตอน</button></div>
-            <div className="episode-tabs">{(active.episodes||[]).map(e=><button key={e.id} className={episode?.id===e.id?"selected":""} onClick={()=>{setActiveEpisodeId(e.id);setActiveSceneId(e.scenes?.[0]?.id)}}>{e.title}</button>)}</div>
-            <div className="scene-pills">{(episode?.scenes||[]).map((s,i)=><button key={s.id} className={scene?.id===s.id?"selected":""} onClick={()=>setActiveSceneId(s.id)}><span>{String(i+1).padStart(2,"0")}</span>{s.title}</button>)}<button className="add-scene-pill" onClick={addScene}><Plus size={15}/> เพิ่มฉาก</button></div>
+            <div className="episode-tabs">{(active.episodes||[]).map(e=><div className="episode-tab-item" key={e.id}><button className={episode?.id===e.id?"selected":""} onClick={()=>{setActiveEpisodeId(e.id);setActiveSceneId(e.scenes?.[0]?.id || null)}}>{e.title}</button><button className="mini-delete" title={`ลบ ${e.title}`} aria-label={`ลบ ${e.title}`} onClick={()=>deleteEpisode(e.id)}><Trash2 size={13}/></button></div>)}</div>
+            <div className="scene-pills">{(episode?.scenes||[]).map((s,i)=><div className="scene-pill-item" key={s.id}><button className={scene?.id===s.id?"selected":""} onClick={()=>setActiveSceneId(s.id)}><span>{String(i+1).padStart(2,"0")}</span>{s.title}</button><button className="mini-delete" title={`ลบ ${s.title}`} aria-label={`ลบ ${s.title}`} onClick={()=>deleteScene(s.id)}><Trash2 size={12}/></button></div>)}<button className="add-scene-pill" onClick={addScene}><Plus size={15}/> เพิ่มฉาก</button></div>
             {scene && <div className="scene-editor"><div className="scene-title-row"><div><span className="eyebrow">SCENE {String((episode?.scenes||[]).findIndex(s=>s.id===scene.id)+1).padStart(2,"0")}</span><h3>{scene.title}</h3></div><SelectField label="ความยาว" value={String(scene.duration||8)} onChange={v=>updateScene({duration:Number(v)})} options={["5","8","10","12","15","20","30","60"]}/></div><div className="form-grid"><Field label="ชื่อฉาก" value={scene.title} onChange={v=>updateScene({title:v})}/><Field label="สถานที่" value={scene.location} onChange={v=>updateScene({location:v})}/><div className="full"><Field label="การกระทำ / สิ่งที่เกิดขึ้น" value={scene.action} onChange={v=>updateScene({action:v})} multiline placeholder="ตัวละครทำอะไร สีหน้า ท่าทาง และการเคลื่อนไหว..."/></div><div className="full"><Field label="บทพูด" value={scene.dialogue} onChange={v=>updateScene({dialogue:v})} multiline placeholder="ชื่อตัวละคร: บทพูดภาษาไทย..."/></div><div className="full"><Field label="มุมกล้องและการเคลื่อนกล้อง" value={scene.camera} onChange={v=>updateScene({camera:v})} placeholder="เช่น ภาพกว้าง → ภาพใกล้ สลับมุมตามบท"/></div><div className="full"><Field label="เสียงประกอบ / SFX" value={scene.sfx} onChange={v=>updateScene({sfx:v})} placeholder="เช่น เสียงฝีเท้า เสียงบรรยากาศ เสียงมุกตลก"/></div></div><div className="prompt-inline"><div><Sparkles size={16}/><div><b>พร้อมสร้าง Prompt</b><small>รวมข้อมูลตัวละครและข้อกำหนดความต่อเนื่องให้อัตโนมัติ</small></div></div><button className="primary-btn" onClick={()=>{setPage("video");setShowPrompt(true)}}>สร้าง Prompt <ChevronRight size={16}/></button></div></div>}
           </div><aside className="editor-aside"><div className="panel"><div className="panel-title"><Users size={17}/><h3>ตัวละครในเรื่อง</h3><span className="count-badge">{active.characters?.length||0}</span></div>{(active.characters||[]).slice(0,4).map(c=><div className="mini-character" key={c.id}><div className="character-avatar">{c.name.slice(0,1)}</div><div><b>{c.name}</b><small>{c.role}</small></div></div>)}<button className="outline-btn full-btn" onClick={()=>go("characters")}><Users size={15}/> จัดการตัวละคร</button></div><div className="panel continuity-panel"><div className="continuity-head"><Sparkles size={17}/><b>Continuity Check</b></div><p>ใช้รายละเอียดตัวละครที่บันทึกไว้ในทุก Prompt</p><div className="check-row"><Check size={14}/> รูปลักษณ์ตัวละคร</div><div className="check-row"><Check size={14}/> เสื้อผ้าและขนาดตัว</div><div className="check-row"><Check size={14}/> ภาษาและเสียงพูด</div><small className="muted">ระบบช่วยใส่ข้อกำหนดใน Prompt แต่ผลลัพธ์วิดีโอยังต้องตรวจสอบ</small></div></aside></div>}
         </section>}
